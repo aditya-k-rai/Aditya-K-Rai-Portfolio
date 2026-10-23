@@ -26,36 +26,111 @@ const navItems: NavItem[] = [
 export default function Header() {
   const { theme, toggle } = useTheme()
   const [activeSection, setActiveSection] = useState('#about')
-  const [glarePos, setGlarePos] = useState({ x: 50, y: 50, opacity: 0 })
   const navRef = useRef<HTMLElement>(null)
+  const pillRef = useRef<HTMLSpanElement>(null)
+  const glareRef = useRef<HTMLSpanElement>(null)
+  const navListRef = useRef<HTMLUListElement>(null)
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPos = window.scrollY + 200
-      for (let i = navItems.length - 1; i >= 0; i--) {
-        const item = navItems[i]
-        const el = document.querySelector(item.href) as HTMLElement | null
-        if (el && el.offsetTop <= scrollPos) {
-          setActiveSection(item.href)
-          break
-        }
-      }
+  const updatePill = (targetHref: string, smooth: boolean = true) => {
+    if (!pillRef.current || !navListRef.current) return
+    const activeLink = navListRef.current.querySelector(`a[href="${targetHref}"]`) as HTMLElement | null
+    if (!activeLink) return
+
+    const navList = navListRef.current
+    const listRect = navList.getBoundingClientRect()
+    const linkRect = activeLink.getBoundingClientRect()
+    const pillX = linkRect.left - listRect.left + navList.scrollLeft
+
+    if (!smooth) {
+      pillRef.current.style.transition = 'none'
+    } else {
+      pillRef.current.style.transition = 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)'
     }
 
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    pillRef.current.style.width = `${activeLink.offsetWidth}px`
+    pillRef.current.style.transform = `translateX(${pillX}px)`
+    pillRef.current.style.opacity = '1'
+
+    if (window.matchMedia('(max-width: 1180px)').matches && navList.scrollWidth > navList.clientWidth + 1) {
+      const targetScroll = pillX - (navList.clientWidth - activeLink.offsetWidth) / 2
+      navList.scrollTo({
+        left: Math.max(0, targetScroll),
+        behavior: smooth ? 'smooth' : 'auto',
+      })
+    }
+  }
+
+  useEffect(() => {
+    const wrapper = document.getElementById('wrapper')
+    const scroller = wrapper || window
+
+    const syncToScroll = () => {
+      const currentScroll = wrapper ? wrapper.scrollTop : window.scrollY
+      let active = navItems[0].href
+
+      for (let i = 0; i < navItems.length; i++) {
+        const item = navItems[i]
+        const id = item.href.slice(1)
+        const el = document.getElementById(id)
+        if (el) {
+          const wrapperTop = wrapper ? wrapper.getBoundingClientRect().top : 0
+          const top = el.getBoundingClientRect().top - wrapperTop + currentScroll
+          if (currentScroll >= top - 220) {
+            active = item.href
+          }
+        }
+      }
+
+      setActiveSection(active)
+      updatePill(active, true)
+    }
+
+    scroller.addEventListener('scroll', syncToScroll, { passive: true })
+    window.addEventListener('resize', () => updatePill(activeSection, false))
+
+    const timer = setTimeout(() => {
+      updatePill(activeSection, false)
+    }, 150)
+
+    return () => {
+      scroller.removeEventListener('scroll', syncToScroll)
+      clearTimeout(timer)
+    }
+  }, [activeSection])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
-    if (!navRef.current) return
+    if (!glareRef.current || !navRef.current) return
     const rect = navRef.current.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * 100
-    const y = ((e.clientY - rect.top) / rect.height) * 100
-    setGlarePos({ x, y, opacity: 1 })
+    glareRef.current.style.setProperty('--x', `${e.clientX - rect.left}px`)
+    glareRef.current.style.setProperty('--y', `${e.clientY - rect.top}px`)
+    glareRef.current.style.opacity = '1'
   }
 
   const handleMouseLeave = () => {
-    setGlarePos((prev) => ({ ...prev, opacity: 0 }))
+    if (!glareRef.current) return
+    glareRef.current.style.opacity = '0'
+  }
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault()
+    setActiveSection(href)
+    updatePill(href, true)
+
+    const id = href.slice(1)
+    const el = document.getElementById(id)
+    if (!el) return
+
+    const wrapper = document.getElementById('wrapper')
+    const offset = window.innerWidth <= 820 ? 76 : 90
+    const wrapperTop = wrapper ? wrapper.getBoundingClientRect().top : 0
+    const currentScroll = wrapper ? wrapper.scrollTop : window.scrollY
+    const targetTop = el.getBoundingClientRect().top - wrapperTop + currentScroll - offset
+
+    if (wrapper) {
+      wrapper.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
+    }
   }
 
   return (
@@ -85,18 +160,11 @@ export default function Header() {
         <span className="glass-overlay" aria-hidden="true"></span>
         <span className="glass-specular" aria-hidden="true"></span>
         <span className="glass-glare-wrap" aria-hidden="true">
-          <span
-            className="glass-glare"
-            style={{
-              left: `${glarePos.x}%`,
-              top: `${glarePos.y}%`,
-              opacity: glarePos.opacity,
-            }}
-          ></span>
+          <span className="glass-glare" ref={glareRef}></span>
         </span>
 
-        <ul className="nav-links">
-          <span className="nav-active-pill" aria-hidden="true"></span>
+        <ul className="nav-links" ref={navListRef}>
+          <span className="nav-active-pill" ref={pillRef} aria-hidden="true"></span>
           {navItems.map((item) => {
             const isActive = activeSection === item.href
             return (
@@ -104,7 +172,7 @@ export default function Header() {
                 <a
                   href={item.href}
                   className={isActive ? 'is-active' : ''}
-                  onClick={() => setActiveSection(item.href)}
+                  onClick={(e) => handleNavClick(e, item.href)}
                 >
                   <i className={item.icon} aria-hidden="true"></i>
                   <span>{item.label}</span>
