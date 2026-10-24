@@ -120,17 +120,7 @@ export default function Header() {
     const el = document.getElementById(id)
     if (!el) return
 
-    const wrapper = document.getElementById('wrapper')
-    const offset = window.innerWidth <= 820 ? 76 : 90
-    const wrapperTop = wrapper ? wrapper.getBoundingClientRect().top : 0
-    const currentScroll = wrapper ? wrapper.scrollTop : window.scrollY
-    const targetTop = el.getBoundingClientRect().top - wrapperTop + currentScroll - offset
-
-    if (wrapper) {
-      wrapper.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
-    } else {
-      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
-    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
