@@ -1,131 +1,125 @@
 'use client'
 
-import React, { useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { reelVideos } from '@/lib/data/graphics'
 
 export default function ReelsCarousel() {
-  const trackRef = useRef<HTMLUListElement>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [isMuted, setIsMuted] = useState(true)
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const total = reelVideos.length
 
-  const handleScroll = (direction: 'left' | 'right') => {
-    if (!trackRef.current) return
-    const scrollAmount = direction === 'left' ? -320 : 320
-    trackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' })
+  const getDiff = (idx: number) => {
+    let diff = idx - activeIndex
+    if (diff > total / 2) diff -= total
+    if (diff < -total / 2) diff += total
+    return diff
   }
 
-  const handleVideoClick = (e: React.MouseEvent<HTMLVideoElement>) => {
-    const video = e.currentTarget
-    if (video.paused) {
-      video.play()
-    } else {
-      video.pause()
-    }
+  const goNext = () => {
+    setActiveIndex((prev) => (prev + 1) % total)
   }
+
+  const goPrev = () => {
+    setActiveIndex((prev) => (prev - 1 + total) % total)
+  }
+
+  const togglePlayPause = () => {
+    setIsPlaying((prev) => !prev)
+  }
+
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev)
+  }
+
+  useEffect(() => {
+    if (!isPlaying) return
+    const timer = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % total)
+    }, 4500)
+    return () => clearInterval(timer)
+  }, [isPlaying, total])
 
   return (
     <div className="sm-division" id="sm-reels">
       <h3 className="sm-division-title">Reels</h3>
       <p className="sm-division-desc">Portrait video content for social media platforms</p>
 
-      <div className="sm-carousel sm-carousel--portrait" id="sm-reels-carousel" style={{ position: 'relative' }}>
-        <button
-          className="sm-nav-btn sm-nav-prev"
-          type="button"
-          onClick={() => handleScroll('left')}
-          aria-label="Scroll reels left"
-          style={{
-            position: 'absolute',
-            left: '10px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 10,
-            background: 'var(--clr-glass)',
-            border: '1px solid var(--clr-border)',
-            borderRadius: '50%',
-            width: '44px',
-            height: '44px',
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
-            color: 'var(--clr-text)',
-          }}
-        >
-          &#10094;
-        </button>
+      <div
+        className="sm-carousel sm-carousel--portrait"
+        id="sm-reels-carousel"
+        ref={carouselRef}
+      >
+        <div className="sm-carousel__viewport">
+          <ul className="sm-carousel__track">
+            {reelVideos.map((src, idx) => {
+              const diff = getDiff(idx)
+              const isCenter = diff === 0
 
-        <div className="sm-carousel__viewport" style={{ overflowX: 'auto', padding: '16px 0', scrollbarWidth: 'none' }}>
-          <ul
-            className="sm-carousel__track"
-            ref={trackRef}
-            style={{ display: 'flex', gap: '20px', listStyle: 'none', padding: '0 24px' }}
-          >
-            {reelVideos.map((src, idx) => (
-              <li
-                key={idx}
-                className="sm-carousel__card"
-                style={{
-                  flex: '0 0 240px',
-                  height: '420px',
-                  borderRadius: '16px',
-                  overflow: 'hidden',
-                  background: '#000',
-                  boxShadow: '0 12px 28px rgba(0,0,0,0.2)',
-                  position: 'relative',
-                }}
-              >
-                <video
-                  className="sm-carousel__video"
-                  preload="metadata"
-                  muted
-                  loop
-                  playsInline
-                  src={src}
-                  onClick={handleVideoClick}
-                  onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
-                  onMouseLeave={(e) => e.currentTarget.pause()}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
-                ></video>
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '12px',
-                    left: '12px',
-                    color: '#fff',
-                    fontSize: '12px',
-                    background: 'rgba(0,0,0,0.6)',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    pointerEvents: 'none',
-                  }}
+              return (
+                <li
+                  key={idx}
+                  className="sm-carousel__card"
+                  data-pos={diff}
+                  data-index={idx}
+                  onClick={() => setActiveIndex(idx)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Select reel video ${idx + 1}`}
                 >
-                  <i className="fa-solid fa-play" style={{ marginRight: '4px' }}></i> Reel #{idx + 1}
-                </div>
-              </li>
-            ))}
+                  <video
+                    className="sm-carousel__video"
+                    preload="metadata"
+                    muted={!isCenter || isMuted}
+                    loop
+                    playsInline
+                    autoPlay={isCenter && isPlaying}
+                    src={src}
+                  ></video>
+                </li>
+              )
+            })}
           </ul>
         </div>
 
-        <button
-          className="sm-nav-btn sm-nav-next"
-          type="button"
-          onClick={() => handleScroll('right')}
-          aria-label="Scroll reels right"
-          style={{
-            position: 'absolute',
-            right: '10px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 10,
-            background: 'var(--clr-glass)',
-            border: '1px solid var(--clr-border)',
-            borderRadius: '50%',
-            width: '44px',
-            height: '44px',
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
-            color: 'var(--clr-text)',
-          }}
-        >
-          &#10095;
-        </button>
+        <div className="sm-carousel__controls">
+          <button
+            className="sm-carousel__btn sm-carousel__btn--prev"
+            type="button"
+            onClick={goPrev}
+            aria-label="Previous reel"
+          >
+            &#10094; PREV
+          </button>
+          <button
+            className="sm-carousel__btn sm-carousel__btn--playpause"
+            type="button"
+            onClick={togglePlayPause}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            <i className={`fa-solid ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+          </button>
+          <span className="sm-carousel__indicator">
+            {activeIndex + 1} / {total}
+          </span>
+          <button
+            className="sm-carousel__btn sm-carousel__btn--next"
+            type="button"
+            onClick={goNext}
+            aria-label="Next reel"
+          >
+            NEXT &#10095;
+          </button>
+          <button
+            className="sm-carousel__btn sm-carousel__btn--mute"
+            type="button"
+            onClick={toggleMute}
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+          >
+            <i className={`fa-solid ${isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}`}></i>
+          </button>
+        </div>
       </div>
     </div>
   )

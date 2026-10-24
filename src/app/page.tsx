@@ -6,6 +6,7 @@ import About from '@/components/sections/About/About'
 import Projects from '@/components/sections/Projects/Projects'
 import Footer from '@/components/layout/Footer'
 import ResumeFAB from '@/components/ui/ResumeFAB'
+import ShareOverlay from '@/components/ui/ShareOverlay'
 
 // Dynamic components for high performance, code-splitting, and 60fps-165Hz rendering
 const Skills = dynamic(() => import('@/components/sections/Skills/Skills'), {
@@ -70,8 +71,9 @@ export default function Home() {
           <Shloka />
         </main>
         <Footer />
-        <ResumeFAB />
       </div>
+      <ResumeFAB />
+      <ShareOverlay />
     </>
   )
 }

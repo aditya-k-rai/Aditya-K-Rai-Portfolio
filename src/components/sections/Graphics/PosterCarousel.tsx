@@ -7,12 +7,24 @@ import { posterImages } from '@/lib/data/graphics'
 export default function PosterCarousel() {
   const [activeIndex, setActiveIndex] = useState(3)
 
+  function normalizeIndex(index: number) {
+    return (index + posterImages.length) % posterImages.length
+  }
+
+  function getLoopOffset(index: number) {
+    let offset = index - activeIndex
+    const half = posterImages.length / 2
+    if (offset > half) offset -= posterImages.length
+    if (offset < -half) offset += posterImages.length
+    return offset
+  }
+
   const handlePrev = () => {
-    setActiveIndex((prev) => (prev > 0 ? prev - 1 : posterImages.length - 1))
+    setActiveIndex((prev) => normalizeIndex(prev - 1))
   }
 
   const handleNext = () => {
-    setActiveIndex((prev) => (prev < posterImages.length - 1 ? prev + 1 : 0))
+    setActiveIndex((prev) => normalizeIndex(prev + 1))
   }
 
   return (
@@ -23,40 +35,25 @@ export default function PosterCarousel() {
       <div className="poster-effect-carousel" data-active={activeIndex}>
         <div className="poster-effect-stage" aria-live="polite">
           {posterImages.map((src, idx) => {
-            const offset = idx - activeIndex
-            const isCenter = offset === 0
+            const offset = getLoopOffset(idx)
             const absOffset = Math.abs(offset)
-            const isVisible = absOffset <= 3
-
-            let transform = 'translate(-50%, -50%) scale(0.6)'
-            let opacity = 0
-            let zIndex = 1
-
-            if (isVisible) {
-              const translateX = offset * 110
-              const translateZ = -absOffset * 80
-              const rotateY = offset * -18
-              const scale = isCenter ? 1 : Math.max(0.7, 1 - absOffset * 0.15)
-              transform = `translate(calc(-50% + ${translateX}px), -50%) perspective(1000px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`
-              opacity = isCenter ? 1 : Math.max(0.4, 0.9 - absOffset * 0.25)
-              zIndex = 20 - absOffset
-            }
+            const isCenter = idx === activeIndex
 
             return (
               <button
                 key={idx}
                 className={`poster-effect-slide ${isCenter ? 'is-active' : ''}`}
                 type="button"
-                data-title="Poster Design"
+                data-title={`Poster Design #${idx + 1}`}
                 data-index={idx}
                 onClick={() => setActiveIndex(idx)}
                 style={{
-                  transform,
-                  opacity,
-                  zIndex,
-                  display: isVisible ? 'block' : 'none',
-                  transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+                  ['--offset' as string]: offset,
+                  ['--abs-offset' as string]: absOffset,
+                  zIndex: 80 - absOffset,
                 }}
+                aria-pressed={isCenter}
+                aria-label={`Select poster design ${idx + 1}`}
               >
                 <Image
                   src={src}
@@ -64,7 +61,7 @@ export default function PosterCarousel() {
                   width={340}
                   height={480}
                   loading="lazy"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }}
                 />
               </button>
             )
@@ -79,6 +76,7 @@ export default function PosterCarousel() {
           <button
             className="poster-effect-nav"
             type="button"
+            data-poster-prev
             onClick={handlePrev}
             aria-label="Previous poster"
           >
@@ -89,24 +87,17 @@ export default function PosterCarousel() {
               <button
                 key={i}
                 type="button"
-                className={`poster-dot ${i === activeIndex ? 'is-active' : ''}`}
+                className={`poster-effect-dot ${i === activeIndex ? 'is-active' : ''}`}
                 onClick={() => setActiveIndex(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                style={{
-                  width: i === activeIndex ? '20px' : '8px',
-                  height: '8px',
-                  borderRadius: '4px',
-                  background: i === activeIndex ? 'var(--clr-accent)' : 'var(--clr-border)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
+                aria-label={`Show poster ${i + 1}`}
+                aria-current={i === activeIndex ? 'true' : 'false'}
               />
             ))}
           </div>
           <button
             className="poster-effect-nav"
             type="button"
+            data-poster-next
             onClick={handleNext}
             aria-label="Next poster"
           >

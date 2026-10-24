@@ -11,7 +11,7 @@ function PowerWord({ text, color }: PowerWordProps) {
   return (
     <span className="pw" style={{ ['--pw-color' as string]: color }}>
       {text}
-      {Array.from({ length: 24 }).map((_, i) => (
+      {Array.from({ length: 30 }).map((_, i) => (
         <span
           key={i}
           className="pw-copy"
@@ -27,52 +27,86 @@ function PowerWord({ text, color }: PowerWordProps) {
 
 export default function Shloka() {
   const [isFlipped, setIsFlipped] = useState(false)
+  const sectionRef = useRef<HTMLElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [coords, setCoords] = useState({ h: 1, v: 1 })
 
   useEffect(() => {
+    const section = sectionRef.current
+    const container = containerRef.current
+    if (!section || !container) return
+
+    let ticking = false
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (!containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const x = (e.clientX - rect.left) / rect.width
-      const y = (e.clientY - rect.top) / rect.height
-      const h = (x - 0.5) * 2
-      const v = (y - 0.5) * 2
-      setCoords({ h, v })
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const rect = section.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        const y = e.clientY - rect.top
+        let horizontal: number
+        let vertical: number
+
+        if (x > rect.width / 2) {
+          horizontal = ((x - rect.width / 2) / (rect.width / 2)) * -1
+        } else {
+          horizontal = (rect.width / 2 - x) / (rect.width / 2)
+        }
+
+        if (y > rect.height / 2) {
+          vertical = ((y - rect.height / 2) / (rect.height / 2)) * -1
+        } else {
+          vertical = (rect.height / 2 - y) / (rect.height / 2)
+        }
+
+        container.style.setProperty('--horizontal', horizontal.toString())
+        container.style.setProperty('--vertical', vertical.toString())
+        ticking = false
+      })
     }
 
-    const container = containerRef.current
-    if (container) {
-      container.addEventListener('mousemove', handleMouseMove, { passive: true })
-      return () => container.removeEventListener('mousemove', handleMouseMove)
+    const handleMouseLeave = () => {
+      container.style.setProperty('--horizontal', '0')
+      container.style.setProperty('--vertical', '0')
+    }
+
+    section.addEventListener('mousemove', handleMouseMove, { passive: true })
+    section.addEventListener('mouseleave', handleMouseLeave)
+
+    return () => {
+      section.removeEventListener('mousemove', handleMouseMove)
+      section.removeEventListener('mouseleave', handleMouseLeave)
     }
   }, [])
 
   return (
-    <section className="shloka-section" id="shlokaSection">
+    <section className="shloka-section" id="shlokaSection" ref={sectionRef}>
       <div className="shloka-noise" aria-hidden="true"></div>
       <div
         className="shloka-container"
         id="shlokaContainer"
         ref={containerRef}
         style={{
-          ['--horizontal' as string]: coords.h,
-          ['--vertical' as string]: coords.v,
+          ['--horizontal' as string]: '1',
+          ['--vertical' as string]: '1',
         }}
-        onClick={() => setIsFlipped(!isFlipped)}
-        role="button"
-        tabIndex={0}
-        aria-label="Toggle Sanskrit shloka meaning"
       >
-        <div className={`shloka-flipcard ${isFlipped ? 'is-flipped' : ''}`} id="shlokaFlipcard">
+        <div
+          className={`shloka-flipcard ${isFlipped ? 'flipped' : ''}`}
+          id="shlokaFlipcard"
+          onClick={() => setIsFlipped(!isFlipped)}
+          role="button"
+          tabIndex={0}
+          aria-label="Toggle Sanskrit shloka meaning"
+        >
           <div className="shloka-flip-inner">
             {/* Front: Sanskrit verse with glowing power words */}
             <div className="shloka-flip-front">
               <p className="shloka-line">
                 <PowerWord text="उत्साहो" color="#FFE066" />{' '}
-                <PowerWord text="बलवानार्य" color="#FF2D87" />{' '}
-                <PowerWord text="नास्ति" color="#BF40FF" />{' '}
-                <span className="shloka-normal">उत्साहात्परं</span>{' '}
+                <PowerWord text="बलवान्" color="#FF2D87" />{' '}
+                <PowerWord text="आर्य" color="#BF40FF" />{' '}
+                <span className="shloka-normal">नास्त्युत्साहात्परं</span>{' '}
                 <PowerWord text="बलम्" color="#00F0FF" />{' '}
                 <span className="shloka-normal">|</span>
               </p>
@@ -87,7 +121,7 @@ export default function Shloka() {
               <p className="shloka-hint">click to reveal meaning</p>
             </div>
 
-            {/* Back: English meaning */}
+            {/* Back: Full English meaning */}
             <div className="shloka-flip-back">
               <p className="shloka-meaning">
                 Enthusiasm is supreme strength, O Noble one; there is no power greater than enthusiasm.

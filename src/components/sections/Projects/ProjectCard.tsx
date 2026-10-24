@@ -1,16 +1,38 @@
+'use client'
+
 import React from 'react'
 import Image from 'next/image'
 import type { Project } from '@/types'
 
 interface ProjectCardProps {
   project: Project
+  onCardClick?: (project: Project) => void
 }
 
-export default function ProjectCard({ project }: ProjectCardProps) {
+export default function ProjectCard({ project, onCardClick }: ProjectCardProps) {
   const isRight = project.side === 'right'
 
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('a, button')) return
+    if (onCardClick) onCardClick(project)
+  }
+
   return (
-    <div className="projectCard" id={`project${project.id}`}>
+    <div
+      className="projectCard"
+      id={`project${project.id}`}
+      onClick={handleCardClick}
+      style={{ cursor: 'pointer' }}
+      role="button"
+      tabIndex={0}
+      aria-label={`View details for ${project.title}`}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && onCardClick) {
+          e.preventDefault()
+          onCardClick(project)
+        }
+      }}
+    >
       {project.tag && <span className="project-tag">{project.tag}</span>}
       <div className="projectCardOverlay"></div>
       <div className={`projectNumber ${isRight ? 'leftNumber' : 'rightNumber'}`}>

@@ -1,101 +1,126 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
-import { cassetteAudios } from '@/lib/data/graphics'
+import React, { useState, useEffect, useRef } from 'react'
+
+const tracks = [
+  {
+    label: 'Let Me Down',
+    src: '/assets/audio/Let me down slowly X main dhondney ko 128KBPS.mp3',
+  },
+  {
+    label: 'Aaja Sanam',
+    src: '/assets/audio/AAJA SANAM X DARKSIDE.mp3',
+  },
+  {
+    label: 'Smile Awari',
+    src: '/assets/audio/Die-With-A-Smile-X-Awari-Mashup-Lady-128k.mp3',
+  },
+  {
+    label: 'Smile Teri',
+    src: '/assets/audio/Die-With-A-Smile-X-Teri-Deewani-Mashup-_128k.mp3',
+  },
+  {
+    label: 'Mikasha Eren',
+    src: '/assets/audio/Mikasha-x-eren-Hindi-song128k.mp3',
+  },
+]
 
 export default function CassettePlayer() {
-  const [currentTrack, setCurrentTrack] = useState(cassetteAudios[0])
+  const [activeIdx, setActiveIdx] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const audioRef = useRef<HTMLAudioElement>(null)
+  const [statusText, setStatusText] = useState('Ready: Let Me Down')
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  const handleTrackChange = (track: typeof cassetteAudios[0]) => {
-    setCurrentTrack(track)
-    if (audioRef.current) {
-      audioRef.current.src = track.src
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
-    }
-  }
+  const handleTrackClick = (idx: number) => {
+    const track = tracks[idx]
+    const iframe = iframeRef.current
+    if (!iframe || !iframe.contentWindow) return
 
-  const togglePlayback = () => {
-    if (!audioRef.current) return
-    if (isPlaying) {
-      audioRef.current.pause()
+    // Pause TV player
+    window.postMessage({ type: 'portfolio-pause-tv' }, '*')
+
+    if (activeIdx === idx && isPlaying) {
+      iframe.contentWindow.postMessage(
+        {
+          type: 'portfolio-cassette-control',
+          action: 'stop',
+        },
+        '*'
+      )
       setIsPlaying(false)
-    } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
+      setStatusText(`Stopped: ${track.label}`)
+      return
     }
+
+    setActiveIdx(idx)
+    setIsPlaying(true)
+    setStatusText(`Playing: ${track.label}`)
+
+    const absoluteSrc = new URL(track.src, window.location.href).href
+
+    iframe.contentWindow.postMessage(
+      {
+        type: 'portfolio-cassette-load-track',
+        src: absoluteSrc,
+        title: track.label,
+        trackIndex: 0,
+        play: true,
+      },
+      '*'
+    )
   }
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data || {}
+      if (data.type === 'portfolio-cassette-track-loaded') {
+        setStatusText(`Loaded in recorder: ${tracks[activeIdx]?.label}`)
+      }
+      if (data.type === 'portfolio-cassette-track-playing') {
+        setIsPlaying(true)
+        setStatusText(`Playing: ${tracks[activeIdx]?.label}`)
+      }
+      if (data.type === 'portfolio-cassette-track-stopped') {
+        setIsPlaying(false)
+        setStatusText(`Ready: ${tracks[activeIdx]?.label}`)
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [activeIdx])
 
   return (
     <div className="hobbies-subsection cassette-subsection" aria-labelledby="cassetteDeckTitle">
       <h3 id="cassetteDeckTitle" className="sr-only">4TRACK-CC audio cassette player</h3>
-
-      <div style={{ position: 'relative', width: '100%', maxWidth: '680px', margin: '0 auto', minHeight: '380px' }}>
-        <iframe
-          className="fourtrack-source-frame"
-          src="/4track-recorder/index.html"
-          title="4TRACK-CC open-source 4-track recorder"
-          loading="lazy"
-          allow="microphone"
-          scrolling="no"
-          style={{ width: '100%', height: '400px', border: 'none', borderRadius: '16px' }}
-        ></iframe>
-      </div>
-
-      <audio
-        ref={audioRef}
-        src={currentTrack.src}
-        onEnded={() => setIsPlaying(false)}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-      />
-
-      <div className="cassette-track-list" aria-label="Audio cassette tracks" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px', marginTop: '16px' }}>
-        {cassetteAudios.map((track, idx) => {
-          const isActive = track.src === currentTrack.src
+      <iframe
+        ref={iframeRef}
+        className="fourtrack-source-frame"
+        src="/4track-recorder/index.html"
+        title="4TRACK-CC open-source 4-track recorder"
+        loading="lazy"
+        allow="microphone"
+        scrolling="no"
+      ></iframe>
+      <div className="cassette-track-list" aria-label="Audio cassette tracks">
+        {tracks.map((t, idx) => {
+          const isActive = idx === activeIdx
           return (
             <button
               key={idx}
               type="button"
-              className={`cassette-track ${isActive ? 'is-active' : ''}`}
-              onClick={() => handleTrackChange(track)}
+              className={`cassette-track ${isActive ? 'is-active' : ''} ${isActive && isPlaying ? 'is-playing' : ''}`}
+              data-cassette-audio={t.src}
               aria-pressed={isActive}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '999px',
-                background: isActive ? 'var(--clr-accent)' : 'var(--clr-bg-card)',
-                color: isActive ? '#fff' : 'var(--clr-text)',
-                border: '1px solid var(--clr-border)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: '13px',
-              }}
+              onClick={() => handleTrackClick(idx)}
             >
-              {track.label} {isActive && isPlaying ? '🔊' : ''}
+              {t.label}
             </button>
           )
         })}
       </div>
-
-      <div style={{ textAlign: 'center', marginTop: '12px' }}>
-        <button
-          type="button"
-          onClick={togglePlayback}
-          style={{
-            padding: '6px 14px',
-            borderRadius: '8px',
-            background: 'var(--clr-accent)',
-            color: '#fff',
-            fontSize: '12px',
-            cursor: 'pointer',
-          }}
-        >
-          {isPlaying ? 'Pause Audio' : 'Play Audio'}
-        </button>
-      </div>
-
-      <p className="cassette-audio-status" aria-live="polite" style={{ textAlign: 'center', marginTop: '8px', fontSize: '13px', color: 'var(--clr-text-secondary)' }}>
-        {isPlaying ? `Playing: ${currentTrack.label}` : `Ready: ${currentTrack.label}`}
+      <p className="cassette-audio-status" aria-live="polite">
+        {statusText}
       </p>
     </div>
   )
